@@ -3,6 +3,7 @@
 import type { FinancialContext, Transaction } from "@/lib/types";
 import {
   mesesFondoEmergencia,
+  progresoMeta,
   ratioEndeudamiento,
   regla503020,
   tasaDeAhorro,
@@ -38,6 +39,7 @@ export default function HealthIndicators({ transactions, context }: Props) {
   const meses = mesesFondoEmergencia(transactions, context);
   const endeudamiento = ratioEndeudamiento(transactions, context);
   const regla = regla503020(transactions);
+  const meta = progresoMeta(transactions, context.savingsGoal ?? 0);
 
   const indicadores: Indicador[] = [
     {
@@ -90,6 +92,33 @@ export default function HealthIndicators({ transactions, context }: Props) {
           </div>
         ))}
       </div>
+
+      {meta.meta > 0 && (
+        <div className="rounded-xl border border-brand-200 bg-brand-50 p-4">
+          <div className="mb-1 flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-slate-700">
+              Meta de ahorro mensual
+            </h4>
+            <span className="text-sm font-semibold text-brand-700">
+              {meta.porcentaje.toFixed(0)}%
+            </span>
+          </div>
+          <p className="mb-2 text-xs text-slate-600">
+            {formatoMoneda(meta.ahorroActual)} de {formatoMoneda(meta.meta)}
+          </p>
+          <div className="h-2.5 w-full overflow-hidden rounded-full bg-white">
+            <div
+              className="h-full rounded-full bg-brand-500"
+              style={{ width: `${meta.porcentaje}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            {meta.porcentaje >= 100
+              ? "¡Meta alcanzada este mes! 🎉"
+              : `Te faltan ${formatoMoneda(meta.meta - meta.ahorroActual)} para tu meta.`}
+          </p>
+        </div>
+      )}
 
       <div>
         <h4 className="mb-1 text-sm font-semibold text-slate-700">

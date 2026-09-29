@@ -39,6 +39,8 @@ export interface FinancialContext {
   liquidSavings: number;
   /** Pago mensual total de deudas (tarjetas, préstamos, etc.). */
   monthlyDebtPayments: number;
+  /** Meta de ahorro mensual (opcional). */
+  savingsGoal?: number;
 }
 
 /** Resultado de una categorización individual devuelta por la IA. */
