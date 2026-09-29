@@ -125,6 +125,17 @@ export default function AuthForm({ mode }: Props) {
             </p>
           )}
 
+          {!esRegistro && (
+            <div className="text-right">
+              <Link
+                href="/recuperar"
+                className="text-xs font-medium text-brand-600 hover:text-brand-700"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
