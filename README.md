@@ -126,12 +126,15 @@ npm run build  # compila y valida tipos
 
 ## Despliegue en Netlify
 
+Guía paso a paso completa en **[`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md)**. En resumen:
+
 1. Sube el repositorio a GitHub (ya conectado).
 2. En Netlify: **Add new site → Import an existing project** y selecciona el repo.
 3. Netlify detecta Next.js mediante `netlify.toml` y `@netlify/plugin-nextjs`.
-4. En **Site settings → Environment variables**, agrega todas las variables de la
-   tabla anterior (incluye `NEXT_PUBLIC_APP_URL` con la URL final del sitio).
-5. Crea el webhook de Stripe apuntando al dominio de Netlify (ver arriba).
+4. En **Site configuration → Environment variables**, agrega todas las variables de
+   la tabla anterior (las `NEXT_PUBLIC_*` deben existir antes del build).
+5. Despliega, y luego configura el webhook de Stripe y las URLs de Supabase con el
+   dominio final (ver la guía).
 
 ## Estructura
 
