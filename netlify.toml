@@ -1,0 +1,19 @@
+# Configuración de despliegue en Netlify para una app Next.js (App Router).
+# El runtime de Next.js en Netlify (@netlify/plugin-nextjs) gestiona el
+# directorio de publicación, las funciones serverless (API routes) y el
+# middleware automáticamente; NO se debe fijar `publish` manualmente.
+
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# IMPORTANTE: las variables de entorno (ANTHROPIC_API_KEY, las de Supabase y las
+# de Stripe) se configuran en el panel de Netlify:
+#   Site settings > Environment variables.
+# Las variables NEXT_PUBLIC_* deben existir ANTES del build (se incrustan en el
+# bundle del navegador). Ver docs/DESPLIEGUE.md para la guía completa.
