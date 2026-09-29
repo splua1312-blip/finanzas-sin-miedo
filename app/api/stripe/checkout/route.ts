@@ -3,7 +3,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getStripeClient,
   getOrigin,
-  STRIPE_PRICE_ID,
+  resolvePriceId,
+  type PlanPago,
   MissingStripeConfigError,
 } from "@/lib/stripe";
 import { getSubscription } from "@/lib/subscription";
@@ -30,9 +31,24 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!STRIPE_PRICE_ID) {
+  // Plan solicitado (pro mensual por defecto, o anual).
+  let plan: PlanPago = "pro";
+  try {
+    const body = await request.json();
+    if (body?.plan === "anual") plan = "anual";
+  } catch {
+    /* sin cuerpo: se usa el plan por defecto */
+  }
+
+  const priceId = resolvePriceId(plan);
+  if (!priceId) {
     return NextResponse.json(
-      { error: "Falta configurar STRIPE_PRICE_ID." },
+      {
+        error:
+          plan === "anual"
+            ? "Falta configurar STRIPE_PRICE_ID_ANUAL."
+            : "Falta configurar STRIPE_PRICE_ID.",
+      },
       { status: 503 },
     );
   }
@@ -71,11 +87,11 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
       success_url: `${origin}/cuenta?checkout=success`,
       cancel_url: `${origin}/cuenta?checkout=cancel`,
-      metadata: { supabase_user_id: user.id },
+      metadata: { supabase_user_id: user.id, plan },
     });
 
     return NextResponse.json({ url: session.url });

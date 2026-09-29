@@ -33,6 +33,21 @@ function nuevoId(): string {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function readLocalState(): EstadoPersistido | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as EstadoPersistido;
+    if (!Array.isArray(parsed.transactions)) return null;
+    return {
+      transactions: parsed.transactions,
+      context: parsed.context ?? { liquidSavings: 0, monthlyDebtPayments: 0 },
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [context, setContext] = useState<FinancialContext>({
@@ -44,27 +59,88 @@ export default function Home() {
   const [error, setError] = useState("");
   const [errorCode, setErrorCode] = useState<string | undefined>(undefined);
   const [cargado, setCargado] = useState(false);
+  const [authed, setAuthed] = useState<boolean | null>(null);
 
-  // Cargar estado desde localStorage al montar.
+  // Determinar el estado de sesión.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as EstadoPersistido;
-        setTransactions(parsed.transactions ?? []);
-        setContext(parsed.context ?? { liquidSavings: 0, monthlyDebtPayments: 0 });
-      } else {
-        setTransactions(MOVIMIENTOS_EJEMPLO);
-      }
-    } catch {
-      setTransactions(MOVIMIENTOS_EJEMPLO);
-    }
-    setCargado(true);
+    let activo = true;
+    fetch("/api/account")
+      .then((r) => r.json())
+      .then((d) => {
+        if (activo) setAuthed(Boolean(d?.authenticated));
+      })
+      .catch(() => {
+        if (activo) setAuthed(false);
+      });
+    return () => {
+      activo = false;
+    };
   }, []);
 
-  // Guardar estado en localStorage cuando cambie.
+  // Cargar estado: nube si hay sesión, localStorage en modo abierto.
   useEffect(() => {
-    if (!cargado) return;
+    if (authed === null) return;
+    let activo = true;
+    (async () => {
+      if (authed) {
+        try {
+          const res = await fetch("/api/transactions");
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.transactions) && data.transactions.length > 0) {
+              if (activo) {
+                setTransactions(data.transactions);
+                setContext(
+                  data.context ?? { liquidSavings: 0, monthlyDebtPayments: 0 },
+                );
+                setCargado(true);
+              }
+              return;
+            }
+            // Nube vacía: adoptar lo guardado localmente (si existe) y migrarlo.
+            const local = readLocalState();
+            if (activo) {
+              if (local) {
+                setTransactions(local.transactions);
+                setContext(local.context);
+              }
+              setCargado(true);
+            }
+            return;
+          }
+        } catch {
+          /* si falla, cae a modo local */
+        }
+      }
+      const local = readLocalState();
+      if (activo) {
+        if (local) {
+          setTransactions(local.transactions);
+          setContext(local.context);
+        } else {
+          setTransactions(MOVIMIENTOS_EJEMPLO);
+        }
+        setCargado(true);
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [authed]);
+
+  // Guardar estado: nube (con debounce) si hay sesión, localStorage si no.
+  useEffect(() => {
+    if (!cargado || authed === null) return;
+    if (authed) {
+      const t = setTimeout(() => {
+        fetch("/api/transactions", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactions, context }),
+        }).catch(() => {});
+      }, 800);
+      return () => clearTimeout(t);
+    }
     try {
       localStorage.setItem(
         STORAGE_KEY,
@@ -73,7 +149,7 @@ export default function Home() {
     } catch {
       /* almacenamiento no disponible: se ignora */
     }
-  }, [transactions, context, cargado]);
+  }, [transactions, context, cargado, authed]);
 
   const categoriasPorId = useMemo(() => {
     const mapa = new Map<string, { category?: string; bucket?: string }>();
@@ -312,10 +388,10 @@ function PricingSection() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function onUpgrade() {
+  async function onUpgrade(plan: "pro" | "anual") {
     setBusy(true);
     setError("");
-    const err = await startCheckout();
+    const err = await startCheckout(plan);
     if (err) {
       setError(err);
       setBusy(false);
@@ -397,20 +473,28 @@ function PricingSection() {
                   </li>
                 ))}
               </ul>
-              {p.nombre === "Pro" ? (
-                <button
-                  onClick={onUpgrade}
-                  disabled={busy}
-                  className="mt-6 w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:bg-slate-300"
-                >
-                  {busy ? "Redirigiendo…" : "Mejorar a Pro"}
-                </button>
-              ) : (
+              {p.nombre === "Gratis" ? (
                 <button
                   disabled
                   className="mt-6 w-full cursor-not-allowed rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 opacity-80"
                 >
-                  {p.nombre === "Gratis" ? "Plan actual" : "Próximamente"}
+                  Plan actual
+                </button>
+              ) : (
+                <button
+                  onClick={() => onUpgrade(p.nombre === "Anual" ? "anual" : "pro")}
+                  disabled={busy}
+                  className={`mt-6 w-full rounded-lg px-4 py-2 text-sm font-semibold transition disabled:bg-slate-300 ${
+                    p.destacado
+                      ? "bg-brand-600 text-white hover:bg-brand-700"
+                      : "bg-slate-800 text-white hover:bg-slate-900"
+                  }`}
+                >
+                  {busy
+                    ? "Redirigiendo…"
+                    : p.nombre === "Anual"
+                      ? "Elegir Anual"
+                      : "Mejorar a Pro"}
                 </button>
               )}
             </div>

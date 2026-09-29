@@ -20,7 +20,11 @@ desplegarse en **Netlify**.
 - El **dashboard**, las gráficas y los indicadores de salud financiera son **gratis**
   y no requieren cuenta.
 - El botón **«Analizar con IA»** requiere **iniciar sesión**. En el plan gratuito se
-  permite **1 análisis al mes**; el plan **Pro** lo hace ilimitado.
+  permite **1 análisis al mes**; los planes **Pro** (mensual) y **Anual** lo hacen
+  ilimitado.
+- **Persistencia:** con sesión iniciada, tus movimientos se **guardan en la base de
+  datos** (Supabase) y se sincronizan entre dispositivos. Sin sesión, se guardan solo
+  en el navegador (`localStorage`) y se migran a tu cuenta al iniciar sesión.
 - **Modo de desarrollo:** si Supabase no está configurado, la app opera en «modo
   abierto» (sin login ni límite) para que puedas probar la IA solo con
   `ANTHROPIC_API_KEY`. Al configurar Supabase, se activan la autenticación y el
@@ -65,7 +69,8 @@ desplegarse en **Netlify**.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí (auth) | Clave pública (anon) de Supabase. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Sí (pagos) | Clave service_role (SECRETA). La usa el webhook. |
 | `STRIPE_SECRET_KEY` | Sí (pagos) | Clave secreta de Stripe. |
-| `STRIPE_PRICE_ID` | Sí (pagos) | ID del precio del plan Pro (`price_...`). |
+| `STRIPE_PRICE_ID` | Sí (pagos) | ID del precio del plan Pro mensual (`price_...`). |
+| `STRIPE_PRICE_ID_ANUAL` | No | ID del precio del plan Anual (`price_...`). |
 | `STRIPE_WEBHOOK_SECRET` | Sí (pagos) | Secreto de firma del webhook (`whsec_...`). |
 | `NEXT_PUBLIC_APP_URL` | Recomendada | URL pública para las redirecciones de Stripe. |
 
@@ -89,6 +94,8 @@ desplegarse en **Netlify**.
    `STRIPE_SECRET_KEY`.
 2. Crea un **producto** (por ejemplo, «Presupuesto Sin Miedo Pro») con un **precio
    recurrente mensual**. Copia el **Price ID** (`price_...`) → `STRIPE_PRICE_ID`.
+   (Opcional) Agrega un segundo **precio recurrente anual** al mismo producto y
+   copia su **Price ID** → `STRIPE_PRICE_ID_ANUAL` para habilitar el plan Anual.
 3. Configura el **webhook**:
    - **Local:** con la [CLI de Stripe](https://docs.stripe.com/stripe-cli):
      ```bash
@@ -138,6 +145,7 @@ app/
   api/
     analyze/route.ts      Serverless → Claude API (categoriza + recomienda) + paywall
     account/route.ts      Estado de sesión y plan del usuario
+    transactions/route.ts Carga (GET) y guarda (PUT) los movimientos del usuario
     stripe/
       checkout/route.ts   Crea la sesión de pago (suscripción)
       portal/route.ts     Portal de gestión de suscripción
@@ -160,12 +168,12 @@ docs/ESTRATEGIA.md        Documento de estrategia de negocio
 
 Incluido: registro de movimientos, dashboard, indicadores con fórmulas, regla
 50/30/20, categorización y recomendaciones con IA, **autenticación** (email +
-contraseña) y **suscripción Pro con Stripe** (paywall sobre la IA), persistencia
-local de movimientos (`localStorage`).
+contraseña), **suscripción con Stripe** en planes **Pro (mensual)** y **Anual**
+(paywall sobre la IA), y **persistencia de movimientos en la base de datos** con
+sesión iniciada (o `localStorage` en modo abierto).
 
-Siguientes pasos sugeridos: guardar los movimientos en la base de datos (hoy son
-locales por navegador), planes anual/adicionales en Stripe, recuperación de
-contraseña y detección de patrones/simulación de escenarios con IA.
+Siguientes pasos sugeridos: recuperación de contraseña, detección de patrones y
+simulación de escenarios con IA, y exportación de datos.
 
 ## Privacidad
 

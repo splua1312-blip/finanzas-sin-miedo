@@ -11,8 +11,17 @@ create table if not exists public.profiles (
   -- 'free' | 'active' | 'trialing' | 'past_due' | 'canceled'
   subscription_status text not null default 'free',
   current_period_end timestamptz,
+  -- datos para los indicadores de salud financiera
+  liquid_savings numeric not null default 0,
+  monthly_debt_payments numeric not null default 0,
   created_at timestamptz not null default now()
 );
+
+-- Columnas de contexto (idempotente para proyectos ya creados).
+alter table public.profiles
+  add column if not exists liquid_savings numeric not null default 0;
+alter table public.profiles
+  add column if not exists monthly_debt_payments numeric not null default 0;
 
 alter table public.profiles enable row level security;
 
@@ -66,6 +75,43 @@ create policy "ai_usage_insert_own" on public.ai_usage
 
 create index if not exists ai_usage_user_created_idx
   on public.ai_usage (user_id, created_at);
+
+-- ---------------------------------------------------------------------------
+-- Movimientos (ingresos/gastos) del usuario.
+-- ---------------------------------------------------------------------------
+create table if not exists public.transactions (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  client_id text not null,
+  description text not null,
+  amount numeric not null,
+  type text not null check (type in ('ingreso', 'gasto')),
+  category text,
+  bucket text,
+  created_at timestamptz not null default now(),
+  unique (user_id, client_id)
+);
+
+alter table public.transactions enable row level security;
+
+drop policy if exists "transactions_select_own" on public.transactions;
+create policy "transactions_select_own" on public.transactions
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "transactions_insert_own" on public.transactions;
+create policy "transactions_insert_own" on public.transactions
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "transactions_update_own" on public.transactions;
+create policy "transactions_update_own" on public.transactions
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "transactions_delete_own" on public.transactions;
+create policy "transactions_delete_own" on public.transactions
+  for delete using (auth.uid() = user_id);
+
+create index if not exists transactions_user_idx
+  on public.transactions (user_id);
 
 -- Nota: el webhook de Stripe usa la clave service_role (SUPABASE_SERVICE_ROLE_KEY),
 -- que omite RLS, para actualizar public.profiles por stripe_customer_id.

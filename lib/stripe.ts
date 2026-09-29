@@ -1,7 +1,17 @@
 import Stripe from "stripe";
 
-/** ID del precio (Price) del plan Pro en Stripe. */
+/** ID del precio (Price) del plan Pro mensual en Stripe. */
 export const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID || "";
+
+/** ID del precio (Price) del plan Anual en Stripe. */
+export const STRIPE_PRICE_ID_ANUAL = process.env.STRIPE_PRICE_ID_ANUAL || "";
+
+export type PlanPago = "pro" | "anual";
+
+/** Devuelve el Price ID correspondiente al plan solicitado (o "" si no existe). */
+export function resolvePriceId(plan: PlanPago): string {
+  return plan === "anual" ? STRIPE_PRICE_ID_ANUAL : STRIPE_PRICE_ID;
+}
 
 export class MissingStripeConfigError extends Error {
   constructor(message = "Falta la variable de entorno STRIPE_SECRET_KEY.") {
