@@ -172,11 +172,12 @@ docs/ESTRATEGIA.md        Documento de estrategia de negocio
 Incluido: registro de movimientos, dashboard, indicadores con fórmulas, regla
 50/30/20, categorización y recomendaciones con IA, **autenticación** (email +
 contraseña), **suscripción con Stripe** en planes **Pro (mensual)** y **Anual**
-(paywall sobre la IA), y **persistencia de movimientos en la base de datos** con
-sesión iniciada (o `localStorage` en modo abierto).
+(paywall sobre la IA), **persistencia de movimientos en la base de datos** con
+sesión iniciada (o `localStorage` en modo abierto) y **exportación a CSV**
+(compatible con Excel).
 
-Siguientes pasos sugeridos: recuperación de contraseña, detección de patrones y
-simulación de escenarios con IA, y exportación de datos.
+Siguientes pasos sugeridos: recuperación de contraseña, y detección de patrones y
+simulación de escenarios con IA.
 
 ## Privacidad
 

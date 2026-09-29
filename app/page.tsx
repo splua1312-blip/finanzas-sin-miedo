@@ -12,6 +12,7 @@ import Dashboard from "@/components/Dashboard";
 import AIRecommendations from "@/components/AIRecommendations";
 import AccountBar from "@/components/AccountBar";
 import { startCheckout } from "@/lib/billing";
+import { descargarCSV, movimientosACSV, nombreArchivoCSV } from "@/lib/export";
 
 const STORAGE_KEY = "psm:estado:v1";
 
@@ -175,6 +176,10 @@ export default function Home() {
     setError("");
   }
 
+  function exportar() {
+    descargarCSV(nombreArchivoCSV(), movimientosACSV(transactions));
+  }
+
   async function analizar() {
     setLoading(true);
     setError("");
@@ -302,12 +307,20 @@ export default function Home() {
                   <h2 className="text-lg font-semibold text-slate-800">
                     Movimientos ({transactions.length})
                   </h2>
-                  <button
-                    onClick={limpiar}
-                    className="text-xs font-medium text-slate-400 hover:text-rose-600"
-                  >
-                    Limpiar todo
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={exportar}
+                      className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                    >
+                      Exportar CSV
+                    </button>
+                    <button
+                      onClick={limpiar}
+                      className="text-xs font-medium text-slate-400 hover:text-rose-600"
+                    >
+                      Limpiar todo
+                    </button>
+                  </div>
                 </div>
                 <ul className="divide-y divide-slate-100">
                   {transactions.map((t) => {

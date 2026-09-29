@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test lib/finance.test.ts"
+    "test": "node --test lib/finance.test.ts lib/export.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
