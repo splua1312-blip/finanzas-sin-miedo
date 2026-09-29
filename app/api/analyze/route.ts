@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient, MODEL_ID, MissingApiKeyError } from "@/lib/anthropic";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  contarUsoIaMes,
+  FREE_MONTHLY_AI_LIMIT,
+  getSubscription,
+} from "@/lib/subscription";
 import type {
   AnalysisResult,
   FinancialContext,
@@ -125,6 +131,45 @@ export async function POST(request: Request) {
     );
   }
 
+  // --- Autenticación y paywall (solo si Supabase está configurado) ---
+  // Si Supabase no está configurado, se opera en modo abierto (sin auth) para
+  // permitir el desarrollo con solo ANTHROPIC_API_KEY. Con Supabase activo, se
+  // exige sesión y se aplica el límite del plan gratuito.
+  const supabase = createSupabaseServerClient();
+  let userId: string | null = null;
+
+  if (supabase) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          error: "Inicia sesión para usar el análisis con IA.",
+          code: "AUTH_REQUIRED",
+        },
+        { status: 401 },
+      );
+    }
+    userId = user.id;
+
+    const sub = await getSubscription(supabase, userId);
+    if (sub.plan !== "pro") {
+      const usados = await contarUsoIaMes(supabase, userId);
+      if (usados >= FREE_MONTHLY_AI_LIMIT) {
+        return NextResponse.json(
+          {
+            error:
+              "Alcanzaste el límite de análisis con IA del plan gratuito este mes. Mejora a Pro para análisis ilimitados.",
+            code: "UPGRADE_REQUIRED",
+          },
+          { status: 402 },
+        );
+      }
+    }
+  }
+
   const context = body?.context ?? { liquidSavings: 0, monthlyDebtPayments: 0 };
   const ingresoTotal = transactions
     .filter((t) => t.type === "ingreso")
@@ -187,6 +232,11 @@ export async function POST(request: Request) {
 
     const parsed = JSON.parse(extraerJson(texto));
     const result = normalizar(parsed, transactions);
+
+    // Registrar el uso de IA (best-effort) para el conteo del plan gratuito.
+    if (supabase && userId) {
+      await supabase.from("ai_usage").insert({ user_id: userId });
+    }
 
     return NextResponse.json(result);
   } catch (error) {

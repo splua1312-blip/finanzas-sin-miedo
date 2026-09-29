@@ -10,6 +10,8 @@ import { ETIQUETAS_BUCKET, ETIQUETAS_CATEGORIA, formatoMoneda } from "@/lib/form
 import TransactionForm from "@/components/TransactionForm";
 import Dashboard from "@/components/Dashboard";
 import AIRecommendations from "@/components/AIRecommendations";
+import AccountBar from "@/components/AccountBar";
+import { startCheckout } from "@/lib/billing";
 
 const STORAGE_KEY = "psm:estado:v1";
 
@@ -40,6 +42,7 @@ export default function Home() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState<string | undefined>(undefined);
   const [cargado, setCargado] = useState(false);
 
   // Cargar estado desde localStorage al montar.
@@ -99,6 +102,7 @@ export default function Home() {
   async function analizar() {
     setLoading(true);
     setError("");
+    setErrorCode(undefined);
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -108,6 +112,7 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) {
         setError(data?.error ?? "No se pudo completar el análisis.");
+        setErrorCode(data?.code);
         setResult(null);
         return;
       }
@@ -135,6 +140,8 @@ export default function Home() {
 
   return (
     <main className="min-h-screen">
+      <AccountBar />
+
       {/* Hero */}
       <header className="bg-gradient-to-b from-brand-700 to-brand-600 text-white">
         <div className="mx-auto max-w-5xl px-4 py-16 text-center">
@@ -282,6 +289,7 @@ export default function Home() {
                 result={result}
                 loading={loading}
                 error={error}
+                errorCode={errorCode}
                 onAnalyze={analizar}
                 disabled={!hayGastos}
               />
@@ -301,6 +309,19 @@ export default function Home() {
 }
 
 function PricingSection() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function onUpgrade() {
+    setBusy(true);
+    setError("");
+    const err = await startCheckout();
+    if (err) {
+      setError(err);
+      setBusy(false);
+    }
+  }
+
   const planes = [
     {
       nombre: "Gratis",
@@ -341,9 +362,11 @@ function PricingSection() {
           Planes
         </h2>
         <p className="mt-2 text-center text-sm text-slate-500">
-          Empieza gratis y mejora cuando lo necesites. (El cobro se habilitará
-          próximamente.)
+          Empieza gratis y mejora a Pro cuando lo necesites.
         </p>
+        {error && (
+          <p className="mt-3 text-center text-sm text-rose-600">{error}</p>
+        )}
         <div className="mt-8 grid gap-6 sm:grid-cols-3">
           {planes.map((p) => (
             <div
@@ -374,16 +397,22 @@ function PricingSection() {
                   </li>
                 ))}
               </ul>
-              <button
-                disabled
-                className={`mt-6 w-full rounded-lg px-4 py-2 text-sm font-semibold ${
-                  p.destacado
-                    ? "bg-brand-600 text-white"
-                    : "bg-slate-100 text-slate-600"
-                } cursor-not-allowed opacity-80`}
-              >
-                {p.nombre === "Gratis" ? "Plan actual" : "Próximamente"}
-              </button>
+              {p.nombre === "Pro" ? (
+                <button
+                  onClick={onUpgrade}
+                  disabled={busy}
+                  className="mt-6 w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:bg-slate-300"
+                >
+                  {busy ? "Redirigiendo…" : "Mejorar a Pro"}
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="mt-6 w-full cursor-not-allowed rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 opacity-80"
+                >
+                  {p.nombre === "Gratis" ? "Plan actual" : "Próximamente"}
+                </button>
+              )}
             </div>
           ))}
         </div>

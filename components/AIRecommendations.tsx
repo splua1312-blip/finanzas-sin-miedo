@@ -1,12 +1,16 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import type { AnalysisResult } from "@/lib/types";
 import { formatoMoneda } from "@/lib/format";
+import { startCheckout } from "@/lib/billing";
 
 interface Props {
   result: AnalysisResult | null;
   loading: boolean;
   error: string;
+  errorCode?: string;
   onAnalyze: () => void;
   disabled: boolean;
 }
@@ -15,9 +19,17 @@ export default function AIRecommendations({
   result,
   loading,
   error,
+  errorCode,
   onAnalyze,
   disabled,
 }: Props) {
+  const [upgrading, setUpgrading] = useState(false);
+
+  async function onUpgrade() {
+    setUpgrading(true);
+    const err = await startCheckout();
+    if (err) setUpgrading(false);
+  }
   const ahorroTotal =
     result?.recommendations.reduce(
       (acc, r) => acc + (r.ahorroMensualEstimado || 0),
@@ -41,7 +53,24 @@ export default function AIRecommendations({
 
       {error && (
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-          {error}
+          <p>{error}</p>
+          {errorCode === "AUTH_REQUIRED" && (
+            <Link
+              href="/login"
+              className="mt-2 inline-block rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+            >
+              Iniciar sesión
+            </Link>
+          )}
+          {errorCode === "UPGRADE_REQUIRED" && (
+            <button
+              onClick={onUpgrade}
+              disabled={upgrading}
+              className="mt-2 inline-block rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
+            >
+              {upgrading ? "Redirigiendo…" : "Mejorar a Pro"}
+            </button>
+          )}
         </div>
       )}
 
