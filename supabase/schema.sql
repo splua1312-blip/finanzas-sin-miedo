@@ -14,6 +14,7 @@ create table if not exists public.profiles (
   -- datos para los indicadores de salud financiera
   liquid_savings numeric not null default 0,
   monthly_debt_payments numeric not null default 0,
+  savings_goal numeric not null default 0,
   created_at timestamptz not null default now()
 );
 
@@ -22,6 +23,8 @@ alter table public.profiles
   add column if not exists liquid_savings numeric not null default 0;
 alter table public.profiles
   add column if not exists monthly_debt_payments numeric not null default 0;
+alter table public.profiles
+  add column if not exists savings_goal numeric not null default 0;
 
 alter table public.profiles enable row level security;
 

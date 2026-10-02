@@ -68,7 +68,7 @@ export async function GET() {
       .order("created_at", { ascending: true }),
     supabase
       .from("profiles")
-      .select("liquid_savings, monthly_debt_payments")
+      .select("liquid_savings, monthly_debt_payments, savings_goal")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
@@ -85,6 +85,7 @@ export async function GET() {
   const context: FinancialContext = {
     liquidSavings: Number(profile?.liquid_savings ?? 0),
     monthlyDebtPayments: Number(profile?.monthly_debt_payments ?? 0),
+    savingsGoal: Number(profile?.savings_goal ?? 0),
   };
 
   return NextResponse.json({ authenticated: true, transactions, context });
@@ -128,6 +129,7 @@ export async function PUT(request: Request) {
   const ctx = (body.context ?? {}) as Partial<FinancialContext>;
   const liquidSavings = Number(ctx.liquidSavings) || 0;
   const monthlyDebtPayments = Number(ctx.monthlyDebtPayments) || 0;
+  const savingsGoal = Number(ctx.savingsGoal) || 0;
 
   try {
     // Reemplazo completo del conjunto de movimientos del usuario.
@@ -156,6 +158,7 @@ export async function PUT(request: Request) {
       .update({
         liquid_savings: liquidSavings,
         monthly_debt_payments: monthlyDebtPayments,
+        savings_goal: savingsGoal,
       })
       .eq("id", user.id);
 

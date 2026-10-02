@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   balance,
   mesesFondoEmergencia,
+  progresoMeta,
   ratioEndeudamiento,
   regla503020,
   tasaDeAhorro,
@@ -49,6 +50,19 @@ test("ratio de endeudamiento = deudas / ingresos * 100", () => {
     ratioEndeudamiento(base, { liquidSavings: 0, monthlyDebtPayments: 3600 }),
     36,
   );
+});
+
+test("progresoMeta calcula el avance hacia la meta", () => {
+  // balance de base = 5000; meta 10000 -> 50%
+  const p = progresoMeta(base, 10000);
+  assert.equal(p.ahorroActual, 5000);
+  assert.equal(p.meta, 10000);
+  assert.equal(p.porcentaje, 50);
+});
+
+test("progresoMeta sin meta devuelve 0%", () => {
+  const p = progresoMeta(base, 0);
+  assert.equal(p.porcentaje, 0);
 });
 
 test("regla 50/30/20 calcula objetivos correctos", () => {

@@ -108,6 +108,31 @@ export function gastoPorCategoria(
     .sort((a, b) => b.monto - a.monto);
 }
 
+export interface ProgresoMeta {
+  /** Ahorro real del mes (balance no gastado, mínimo 0). */
+  ahorroActual: number;
+  /** Meta mensual objetivo. */
+  meta: number;
+  /** Avance hacia la meta (0-100). */
+  porcentaje: number;
+}
+
+/**
+ * Progreso hacia la meta de ahorro mensual.
+ * Fórmula: min(100, (Ahorro del mes / Meta) × 100)
+ * "Ahorro del mes" = Ingresos − Gastos (no negativo).
+ */
+export function progresoMeta(
+  transactions: Transaction[],
+  meta: number,
+): ProgresoMeta {
+  const ahorroActual = Math.max(0, balance(transactions));
+  const objetivo = meta > 0 ? meta : 0;
+  const porcentaje =
+    objetivo > 0 ? round2(Math.min(100, (ahorroActual / objetivo) * 100)) : 0;
+  return { ahorroActual, meta: objetivo, porcentaje };
+}
+
 export interface Regla503020 {
   bucket: BudgetBucket;
   /** Monto real gastado en el bucket. */
